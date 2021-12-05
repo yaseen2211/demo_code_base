@@ -1,0 +1,93 @@
+class JettiSynchronizerController < Spree::StoreController
+  def sync_change_prices
+    begin
+      price_sync_response = params[:jetti_synchronizer]
+      variant_response    = price_sync_response.present? ? price_sync_response[:channelVariant] : {}
+      variant_id          = variant_response.present? ? variant_response[:externalGroupId].to_i : ''
+      variant_sku         = variant_response.present? ? variant_response[:externalSku] : ''
+      if variant_id.present?
+        updated_price_params = price_sync_response[:price]
+        updated_price        = updated_price_params.present? ? updated_price_params[:price].to_d : {}
+        system_variant       = Spree::Variant.find_by_id(variant_id)
+        system_variant_price = system_variant.price
+        
+        if system_variant.blank?
+          Raven.capture_exception("Variant id:#{variant_id} not exist in spree.")
+        else
+          if system_variant_price != updated_price
+            system_variant.price = updated_price
+            if !system_variant.save
+              Raven.capture_exception("Error occured while saving change in price of variant id:#{variant_id}, sku:#{variant_sku} in spree.")
+            end
+          end
+        end
+      
+      else
+        Raven.capture_exception("Variant id:#{variant_id}, sku:#{variant_sku}  not found while synching change in price.")
+      end
+    rescue StandardError => e
+      Raven.capture_exception(e)
+    ensure
+      render json: {}, status: :ok
+    end
+  end
+  
+  def sync_publish_product
+    # Sample Response ->
+    # <ActionController::Parameters {"variant"=>{"imagesMapped"=>[{"src"=>"https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"}], "images"=>["https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"], "lowInventoryQuantity"=>true, "costPrice"=>12, "commissionRate"=>0, "id"=>9604886, "companyId"=>2829, "productId"=>3428436, "vendorId"=>82713, "dropshipProviderId"=>nil, "dropshipProviderAddressId"=>nil, "sku"=>"PUREJ-BJH-MED", "name"=>"BJH / MED", "dropshipProviderMapping"=>"brand_name", "dropshipProviderAddressMapping"=>"default", "description"=>nil, "productType"=>nil, "requiresShipping"=>nil, "barcode"=>nil, "hsCode"=>nil, "countryOfOrigin"=>nil, "levels"=>nil, "inventorySync"=>"channel", "inventoryAllocated"=>0, "inventoryQuantity"=>0, "inventoryFeeds"=>0, "minInventoryQuantity"=>0, "defaultPurchaseQuantity"=>1, "leadTime"=>nil, "totalPurchaseItems"=>0, "totalSaleItems"=>0, "grams"=>2, "inventoryPolicy"=>"track", "inventoryType"=>"tracked", "position"=>0, "taxable"=>true, "serialPrefix"=>nil, "serialSuffix"=>nil, "serialReference"=>0, "vendorSku"=>nil, "fulfillmentPolicy"=>"vendor_default", "noInventoryPolicy"=>"replenish", "automaticallyBackorder"=>"vendor_default", "dynamicInventoryPolicy"=>nil, "denyThreshold"=>0, "backorderQuantity"=>0, "commissionRateRouting"=>"dropship_provider", "commissionRateType"=>"percentage", "tags"=>["Jetti", "Pure"], "notes"=>nil, "packingHeight"=>0, "packingWidth"=>0, "packingDepth"=>0, "distanceUnit"=>"in", "inventoryRouting"=>"inventory_feed", "orderSplitting"=>"default", "resellerVisibility"=>"visible", "accountingSync"=>"active", "createdAt"=>"2021-10-22T07:24:28.569Z", "updatedAt"=>"2021-10-22T07:24:29.307Z"}, "product"=>{"id"=>3428436, "name"=>"Pure Jetti Product", "handle"=>"pure-jetti-product"}, "vendor"=>{"name"=>"Burgs Store"}, "images"=>["https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"], "imagesMapped"=>[{"src"=>"https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"}], "tags"=>["jetti", "Jetti", "Pure"], "price"=>{"price"=>0, "compareAtPrice"=>nil}, "available"=>0, "optionValues"=>[{"variantId"=>9604886, "variantValue"=>"BJH", "option"=>{"name"=>"Batman", "position"=>1}}, {"variantId"=>9604886, "variantValue"=>"MED", "option"=>{"name"=>"Size", "position"=>1}}], "customFieldVariants"=>[], "mapped"=>{}, "controller"=>"spree/jetti_synchronizer", "action"=>"sync_publish_product", "jetti_synchronizer"=>{"variant"=>{"imagesMapped"=>[{"src"=>"https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"}], "images"=>["https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"], "lowInventoryQuantity"=>true, "costPrice"=>12, "commissionRate"=>0, "id"=>9604886, "companyId"=>2829, "productId"=>3428436, "vendorId"=>82713, "dropshipProviderId"=>nil, "dropshipProviderAddressId"=>nil, "sku"=>"PUREJ-BJH-MED", "name"=>"BJH / MED", "dropshipProviderMapping"=>"brand_name", "dropshipProviderAddressMapping"=>"default", "description"=>nil, "productType"=>nil, "requiresShipping"=>nil, "barcode"=>nil, "hsCode"=>nil, "countryOfOrigin"=>nil, "levels"=>nil, "inventorySync"=>"channel", "inventoryAllocated"=>0, "inventoryQuantity"=>0, "inventoryFeeds"=>0, "minInventoryQuantity"=>0, "defaultPurchaseQuantity"=>1, "leadTime"=>nil, "totalPurchaseItems"=>0, "totalSaleItems"=>0, "grams"=>2, "inventoryPolicy"=>"track", "inventoryType"=>"tracked", "position"=>0, "taxable"=>true, "serialPrefix"=>nil, "serialSuffix"=>nil, "serialReference"=>0, "vendorSku"=>nil, "fulfillmentPolicy"=>"vendor_default", "noInventoryPolicy"=>"replenish", "automaticallyBackorder"=>"vendor_default", "dynamicInventoryPolicy"=>nil, "denyThreshold"=>0, "backorderQuantity"=>0, "commissionRateRouting"=>"dropship_provider", "commissionRateType"=>"percentage", "tags"=>["Jetti", "Pure"], "notes"=>nil, "packingHeight"=>0, "packingWidth"=>0, "packingDepth"=>0, "distanceUnit"=>"in", "inventoryRouting"=>"inventory_feed", "orderSplitting"=>"default", "resellerVisibility"=>"visible", "accountingSync"=>"active", "createdAt"=>"2021-10-22T07:24:28.569Z", "updatedAt"=>"2021-10-22T07:24:29.307Z"}, "product"=>{"id"=>3428436, "name"=>"Pure Jetti Product", "handle"=>"pure-jetti-product"}, "vendor"=>{"name"=>"Burgs Store"}, "images"=>["https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"], "imagesMapped"=>[{"src"=>"https://cdn.filestackcontent.com/3I6wVyBaTtOIMTBdEQ0q"}], "tags"=>["jetti", "Jetti", "Pure"], "price"=>{"price"=>0, "compareAtPrice"=>nil}, "available"=>0, "optionValues"=>[{"variantId"=>9604886, "variantValue"=>"BJH", "option"=>{"name"=>"Batman", "position"=>1}}, {"variantId"=>9604886, "variantValue"=>"MED", "option"=>{"name"=>"Size", "position"=>1}}], "customFieldVariants"=>[], "mapped"=>{}}} permitted: false>
+    
+    begin
+      jcp = Jetti::CreateProductToSpree.new(params)
+      product = jcp.perform
+      render json: {
+          "externalId": product.id,
+          "externalGroupId": product.id,
+          "externalSku": product.sku
+      }, status: :ok
+    rescue StandardError => e
+      Raven.capture_exception(e)
+      render json: {}, status: 500
+    end
+  
+  
+  end
+  
+  def sync_inventory
+    
+    # Sample Response -> <ActionController::Parameters {"variant"=>{"id"=>8665887, "inventoryPolicy"=>"track"}, "channelVariant"=>{"id"=>22907260, "companyId"=>2829, "variantId"=>8665887, "channelId"=>5016, "externalId"=>"#242", "externalGroupId"=>"242", "externalSku"=>"kalkonia-white", "source"=>"custom", "hash"=>"f86ae9319af42b94e68c9f08992ae0dffa771209", "parentHash"=>nil, "status"=>"connected", "errorMessage"=>nil, "inventoryUpdate"=>nil, "priceUpdate"=>{"price"=>12, "compareAtPrice"=>0}, "publishUpdate"=>nil, "costPriceUpdate"=>nil, "variantParcelsHash"=>nil, "createdAt"=>"2021-08-18T16:46:08.930Z", "updatedAt"=>"2021-08-18T16:54:14.044Z", "channel"=>{"hash"=>"8cc2831b51375fadfa5466c614c7d8a4", "shipstationUrl"=>"https://api.jetti.io/api/channels/5016/shipstation.xml", "freeShippingThreshold"=>nil, "hideWhenNoCostPrice"=>nil, "id"=>5016, "includeBackorderQuantity"=>true, "inventoryFeedRemoved"=>"all", "inventoryFeedUnpublish"=>"none", "inventorySync"=>"inventory_feeds", "negativeStock"=>"enabled", "negativeStockLevel"=>0, "parentChannel"=>"custom", "unpublishNoInventory"=>false, "warehouseId"=>3114, "warehouseSync"=>"default"}}, "bundleVariants"=>[], "inventory"=>{"available"=>3, "hasFeeds"=>true, "setUnavailable"=>false, "levels"=>{"inventoryFeeds"=>1, "inventoryFeedMapping"=>[{"dropshipProviderId"=>21465, "inventoryFeedId"=>15335, "allocateInventory"=>false, "inventorySync"=>"all", "inventoryQuantity"=>3, "totalRemoved"=>0, "totalConnected"=>1, "totalItems"=>1}], "inventorySync"=>false, "inventoryRouting"=>"inventory_feed", "hasFeeds"=>true, "warehouses"=>{"3114"=>{"totalIn"=>0, "totalOut"=>0, "available"=>0, "inventoryQuantity"=>0, "inventoryAllocated"=>0, "returned"=>0, "cancelled"=>0, "transfersIn"=>0, "transfersOut"=>0, "adjustments"=>0, "received"=>0, "shipped"=>0, "dropshipmentItems"=>0, "sold"=>0}}, "feeds"=>3, "totalRemoved"=>0, "totalConnected"=>1, "totalItems"=>1, "feedsSyncingDisabled"=>0, "totalIn"=>0, "totalOut"=>0, "available"=>3, "inventoryQuantity"=>3, "inventoryAllocated"=>0, "transfersIn"=>0, "transfersOut"=>0, "adjustments"=>0, "received"=>0, "shipped"=>0, "dropshipmentItems"=>0, "sold"=>0, "returned"=>0, "cancelled"=>0, "inHouse"=>0}}, "controller"=>"spree/jetti_synchronizer", "action"=>"sync_inventory", "jetti_synchronizer"=>{"variant"=>{"id"=>8665887, "inventoryPolicy"=>"track"}, "channelVariant"=>{"id"=>22907260, "companyId"=>2829, "variantId"=>8665887, "channelId"=>5016, "externalId"=>"#242", "externalGroupId"=>"242", "externalSku"=>"kalkonia-white", "source"=>"custom", "hash"=>"f86ae9319af42b94e68c9f08992ae0dffa771209", "parentHash"=>nil, "status"=>"connected", "errorMessage"=>nil, "inventoryUpdate"=>nil, "priceUpdate"=>{"price"=>12, "compareAtPrice"=>0}, "publishUpdate"=>nil, "costPriceUpdate"=>nil, "variantParcelsHash"=>nil, "createdAt"=>"2021-08-18T16:46:08.930Z", "updatedAt"=>"2021-08-18T16:54:14.044Z", "channel"=>{"hash"=>"8cc2831b51375fadfa5466c614c7d8a4", "shipstationUrl"=>"https://api.jetti.io/api/channels/5016/shipstation.xml", "freeShippingThreshold"=>nil, "hideWhenNoCostPrice"=>nil, "id"=>5016, "includeBackorderQuantity"=>true, "inventoryFeedRemoved"=>"all", "inventoryFeedUnpublish"=>"none", "inventorySync"=>"inventory_feeds", "negativeStock"=>"enabled", "negativeStockLevel"=>0, "parentChannel"=>"custom", "unpublishNoInventory"=>false, "warehouseId"=>3114, "warehouseSync"=>"default"}}, "bundleVariants"=>[], "inventory"=>{"available"=>3, "hasFeeds"=>true, "setUnavailable"=>false, "levels"=>{"inventoryFeeds"=>1, "inventoryFeedMapping"=>[{"dropshipProviderId"=>21465, "inventoryFeedId"=>15335, "allocateInventory"=>false, "inventorySync"=>"all", "inventoryQuantity"=>3, "totalRemoved"=>0, "totalConnected"=>1, "totalItems"=>1}], "inventorySync"=>false, "inventoryRouting"=>"inventory_feed", "hasFeeds"=>true, "warehouses"=>{"3114"=>{"totalIn"=>0, "totalOut"=>0, "available"=>0, "inventoryQuantity"=>0, "inventoryAllocated"=>0, "returned"=>0, "cancelled"=>0, "transfersIn"=>0, "transfersOut"=>0, "adjustments"=>0, "received"=>0, "shipped"=>0, "dropshipmentItems"=>0, "sold"=>0}}, "feeds"=>3, "totalRemoved"=>0, "totalConnected"=>1, "totalItems"=>1, "feedsSyncingDisabled"=>0, "totalIn"=>0, "totalOut"=>0, "available"=>3, "inventoryQuantity"=>3, "inventoryAllocated"=>0, "transfersIn"=>0, "transfersOut"=>0, "adjustments"=>0, "received"=>0, "shipped"=>0, "dropshipmentItems"=>0, "sold"=>0, "returned"=>0, "cancelled"=>0, "inHouse"=>0}}}} permitted: false>
+    begin
+      inventory_sync_response = params[:jetti_synchronizer]
+      variant_params          = inventory_sync_response[:channelVariant]
+      inventory_params        = inventory_sync_response[:inventory]
+      variant_id              = inventory_sync_response.present? && variant_params.present? ? variant_params[:externalGroupId] : nil
+      
+      if variant_id.present?
+        
+        system_variant    = Spree::Variant.find_by_id(variant_id)
+        old_count_on_hand = system_variant.count_on_hand
+        new_count_on_hand = inventory_params[:available]
+        
+        if old_count_on_hand != new_count_on_hand
+          
+          vendor_stock_location = system_variant&.vendor&.stock_locations&.last
+          stock_item            = system_variant&.stock_items.find_by(stock_location_id: vendor_stock_location.try(:id))
+          
+          if stock_item.present?
+            stock_item.count_on_hand = new_count_on_hand
+            stock_item.save
+          else
+            Raven.capture_exception("Opps! Failed to sync inventory count for Variant Id: #{variant_id} from jetti due to missing stock item.")
+          end
+        
+        end
+      else
+        Raven.capture_exception("Variant Id is not found in inventory sync response from jetti.")
+      end
+    rescue StandardError => e
+      Raven.capture_exception(e)
+    ensure
+      render json: {}, status: :ok
+    end
+  end
+
+end

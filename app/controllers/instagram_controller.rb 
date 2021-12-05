@@ -1,0 +1,57 @@
+
+class InstagramController < ::Spree::Api::V2::BaseController
+  include ::Spree::Api::V2::CollectionOptionsHelpers
+  
+  def feeds
+
+    begin
+
+      media                   = InstagramFeeds.new.fetch
+      stored_media_count      = Spree::InstagramImage.count
+      account_media_count     = media.count
+
+      if account_media_count != stored_media_count
+
+        Spree::InstagramImage.delete_all
+
+        active_record_array = media.map do |object|
+          {
+              name:       object['caption'],
+              url:        object['media_url'],
+              created_at: Time.now,
+              updated_at: Time.now
+          }
+        end
+
+        Spree::InstagramImage.insert_all(active_record_array)
+        collection.each(&:store_image)
+      end
+
+      render_serialized_payload { serialize_collection(paginated_collection) }
+
+    rescue FailedToFetchAdminUser
+      render json: {data: [], error: 'Missing admin user.'} , status: :unprocessable_entity
+      rescue FailedToFetchLongLivedToken => e
+      render json: {data: [], error: e.message} , status: :unprocessable_entity
+    rescue ShortLivedTokenNotFound
+      render json: {data: [], error: 'Missing access token.'} , status: :unprocessable_entity
+    rescue StandardError => e
+      render json: {data: [], error: e.message} , status: :unprocessable_entity
+    end
+  
+  end
+  
+  def collection_serializer
+    ::Spree::V2::Storefront::InstagramSerializer
+  end
+  
+  def paginated_collection
+    collection_paginator.new(collection, params).call
+  end
+  
+  def collection
+    ::Spree::InstagramImage.includes(image_attachment: :blob).all
+  end
+
+end
+
